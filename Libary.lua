@@ -50,6 +50,7 @@ function MyLibrary:SetAnchor(part, boolean)
 end
 
 function MyLibrary:CreatePart(cf, parent, opts)
+    task.spawn(function()
     parent = parent or workspace
     opts = opts or {}
     local name = opts.Name or "Part"
@@ -96,6 +97,7 @@ function MyLibrary:CreatePart(cf, parent, opts)
 
     temp:Destroy()
     return createdpart
+    end)
 end
 
 function MyLibrary:DestroyPart(part)
