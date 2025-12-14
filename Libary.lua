@@ -106,8 +106,8 @@ function MyLibrary:MovePart(part, cf)
     _( { "SyncMove", { { Part = part, CFrame = cf } } } )
 end
 
-function MyLibrary:Resize(part, size, cf)
-    _( { "SyncResize", { { Part = part, CFrame = cf, Size = size } } } )
+function MyLibrary:Resize(part, size)
+    _( { "SyncResize", { { Part = part, CFrame = part.CFrame, Size = size } } } )
 end
 
 function MyLibrary:AddMesh(part)
