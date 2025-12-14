@@ -1,4 +1,5 @@
--- MyLibrary.lua
+-- inside MyLibrary.lua
+
 local MyLibrary = {}
 local tool
 local remote
@@ -24,6 +25,7 @@ function MyLibrary:Setup()
     end
 end
 
+-- internal helper to invoke the remote
 local function _(args)
     if remote then
         remote:InvokeServer(unpack(args))
@@ -32,20 +34,19 @@ local function _(args)
     end
 end
 
-local function CreatePart(cf, parent)
+-- new SetName method
+function MyLibrary:SetName(part, newName)
     local args = {
-        [1] = "CreatePart",
-        [2] = "Normal",
-        [3] = cf,
-        [4] = parent
+        [1] = "SetName",
+        [2] = { [1] = part },
+        [3] = newName
     }
     _(args)
 end
 
 function MyLibrary:CreatePart(pos, name)
-    if name == nil then name = "Part" end
+    name = name or "Part"
 
-    -- temporary local part
     local part = Instance.new("Part")
     part.Size = Vector3.new(1,1,1)
     part.Anchored = true
@@ -57,25 +58,17 @@ function MyLibrary:CreatePart(pos, name)
     part.Name = "tempartlocal"
     part.Parent = workspace
 
-    -- call your remote to create the server-side part
     CreatePart(part.CFrame, workspace.Terrain)
 
-    -- ⚠️ this assumes the server puts a Part under Terrain
     local createdpart = workspace.Terrain:FindFirstChild("Part")
     if createdpart then
-        createdpart.Name = name
+        self:SetName(createdpart, name) -- use the new helper
     else
         warn("No created part found under Terrain")
     end
 
     part:Destroy()
     return createdpart
-end
-
-
-function MyLibrary:CreateWindow(options)
-    print("Creating window with title:", options.Title)
-    return {Title = options.Title}
 end
 
 return MyLibrary
