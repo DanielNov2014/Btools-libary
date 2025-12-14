@@ -35,11 +35,11 @@ local function _(args)
 end
 
 -- new SetName method
-function MyLibrary:SetName(part, newName)
+function MyLibrary:SetName(part, stringg)
     local args = {
         [1] = "SetName",
         [2] = { [1] = part },
-        [3] = newName
+        [3] = stringg
     }
     _(args)
 end
@@ -62,7 +62,7 @@ function MyLibrary:CreatePart(pos, name)
 
     local createdpart = workspace.Terrain:FindFirstChild("Part")
     if createdpart then
-        self:SetName(createdpart, name) -- use the new helper
+       self:SetName(createdpart, name)
     else
         warn("No created part found under Terrain")
     end
