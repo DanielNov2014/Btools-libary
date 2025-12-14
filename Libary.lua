@@ -1,4 +1,6 @@
 -- MyLibrary.lua
+-- Full toolbox of remote helpers for SyncAPI
+
 local MyLibrary = {}
 local tool
 local remote
@@ -14,6 +16,7 @@ end
 
 -- Setup: locate SyncAPI tool and remote
 function MyLibrary:Setup()
+    print("v 1.0")
     local player = game.Players.LocalPlayer
 
     for _, v in ipairs(player:GetDescendants()) do
@@ -37,59 +40,158 @@ function MyLibrary:Setup()
     end
 end
 
--- SetName: rename a part via remote
-function MyLibrary:SetName(part, newName)
-    local args = {
-        [1] = "SetName",
-        [2] = { [1] = part },
-        [3] = newName
-    }
-    _(args)
+-- === Core building functions ===
+function MyLibrary:SetCollision(part, boolean)
+    _( { "SyncCollision", { { Part = part, CanCollide = boolean } } } )
 end
 
--- Internal CreatePart remote call
-local function CreatePart(cf, parent)
-    local args = {
-        [1] = "CreatePart",
-        [2] = "Normal",
-        [3] = cf,
-        [4] = parent
-    }
-    _(args)
+function MyLibrary:SetAnchor(part, boolean)
+    _( { "SyncAnchor", { { Part = part, Anchored = boolean } } } )
 end
 
--- CreatePart: spawn a server-side part
-function MyLibrary:CreatePart(pos, name)
-    name = name or "Part"
+function MyLibrary:CreatePart(cf, parent, opts)
+    parent = parent or workspace
+    opts = opts or {}
+    local name = opts.Name or "Part"
+    local color = opts.Color or Color3.fromRGB(255, 0, 0)
 
-    local part = Instance.new("Part")
-    part.Size = Vector3.new(1,1,1)
-    part.Anchored = true
-    part.CanCollide = false
-    part.CanTouch = false
-    part.CanQuery = false
-    part.Transparency = 1
-    part.Position = pos
-    part.Name = "tempartlocal"
-    part.Parent = workspace
+    -- temporary local part
+    local temp = Instance.new("Part")
+    temp.Size = Vector3.new(1,1,1)
+    temp.Anchored = true
+    temp.CanCollide = false
+    temp.CanTouch = false
+    temp.CanQuery = false
+    temp.Transparency = 1
+    temp.CFrame = cf
+    temp.Name = "tempartlocal"
+    temp.Parent = workspace
 
-    CreatePart(part.CFrame, workspace.Terrain)
+    -- remote call
+    _( { "CreatePart", "Normal", temp.CFrame, parent } )
 
-    local createdpart = workspace.Terrain:FindFirstChild("Part")
-    if createdpart then
-        self:SetName(createdpart, name)
-    else
-        warn("Created part not found under Terrain")
+    -- wait for replication
+    local createdpart
+    for i = 1, 50 do
+        if parent == workspace.Terrain then
+            createdpart = workspace.Terrain:FindFirstChild("Part")
+            if createdpart then break end
+        end
+        for _, v in ipairs(parent:GetDescendants()) do
+            if v:IsA("BasePart") and (v.Position - temp.Position).Magnitude < 6 then
+                createdpart = v
+                break
+            end
+        end
+        if createdpart then break end
+        task.wait(0.1)
     end
 
-    part:Destroy()
+    if createdpart then
+        self:SetName(createdpart, name)
+        self:Color(createdpart, color)
+    else
+        warn("Created part not found")
+    end
+
+    temp:Destroy()
     return createdpart
 end
 
--- Optional: CreateWindow stub
-function MyLibrary:CreateWindow(options)
-    print("Creating window with title:", options.Title)
-    return {Title = options.Title}
+function MyLibrary:DestroyPart(part)
+    _( { "Remove", { part } } )
+end
+
+function MyLibrary:MovePart(part, cf)
+    _( { "SyncMove", { { Part = part, CFrame = cf } } } )
+end
+
+function MyLibrary:Resize(part, size, cf)
+    _( { "SyncResize", { { Part = part, CFrame = cf, Size = size } } } )
+end
+
+function MyLibrary:AddMesh(part)
+    _( { "CreateMeshes", { { Part = part } } } )
+end
+
+function MyLibrary:SetMesh(part, meshid)
+    _( { "SyncMesh", { { Part = part, MeshId = "rbxassetid://"..meshid } } } )
+end
+
+function MyLibrary:SetTexture(part, texid)
+    _( { "SyncMesh", { { Part = part, TextureId = "rbxassetid://"..texid } } } )
+end
+
+function MyLibrary:SetName(part, newName)
+    _( { "SetName", { part }, newName } )
+end
+
+function MyLibrary:MeshResize(part, size)
+    _( { "SyncMesh", { { Part = part, Scale = size } } } )
+end
+
+function MyLibrary:Weld(part1, part2, lead)
+    _( { "CreateWelds", { part1, part2 }, lead } )
+end
+
+function MyLibrary:SetLocked(part, boolean)
+    _( { "SetLocked", { part }, boolean } )
+end
+
+function MyLibrary:SetTrans(part, transparency)
+    _( { "SyncMaterial", { { Part = part, Transparency = transparency } } } )
+end
+
+function MyLibrary:CreateSpotlight(part)
+    _( { "CreateLights", { { Part = part, LightType = "SpotLight" } } } )
+end
+
+function MyLibrary:SyncLighting(part, brightness)
+    _( { "SyncLighting", { { Part = part, LightType = "SpotLight", Brightness = brightness } } } )
+end
+
+function MyLibrary:Color(part, color)
+    _( { "SyncColor", { { Part = part, Color = color, UnionColoring = false } } } )
+end
+
+function MyLibrary:SpawnDecal(part, side)
+    _( { "CreateTextures", { { Part = part, Face = side, TextureType = "Decal" } } } )
+end
+
+function MyLibrary:AddDecal(part, asset, side)
+    _( { "SyncTexture", { { Part = part, Face = side, TextureType = "Decal", Texture = "rbxassetid://"..asset } } } )
+end
+
+-- === Utility functions ===
+function MyLibrary:Spam(id)
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("BasePart") then
+            spawn(function()
+                self:SetLocked(v, false)
+                for _, face in ipairs(Enum.NormalId:GetEnumItems()) do
+                    self:SpawnDecal(v, face)
+                    self:AddDecal(v, id, face)
+                end
+            end)
+        end
+    end
+end
+
+function MyLibrary:Sky(id)
+    local char = game.Players.LocalPlayer.Character
+    local pos = char.HumanoidRootPart.Position
+    self:CreatePart(CFrame.new(math.floor(pos.X), math.floor(pos.Y), math.floor(pos.Z)) + Vector3.new(0,6,0), workspace)
+
+    for _, v in ipairs(workspace:GetDescendants()) do
+        if v:IsA("BasePart") and math.floor(v.Position.X) == math.floor(pos.X) and math.floor(v.Position.Z) == math.floor(pos.Z) then
+            self:SetName(v, "Sky")
+            self:AddMesh(v)
+            self:SetMesh(v, "111891702759441")
+            self:SetTexture(v, id)
+            self:MeshResize(v, Vector3.new(9000,9000,9000))
+            self:SetLocked(v, true)
+        end
+    end
 end
 
 return MyLibrary
