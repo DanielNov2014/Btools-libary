@@ -43,22 +43,35 @@ local function CreatePart(cf, parent)
 end
 
 function MyLibrary:CreatePart(pos, name)
-    name = name or "Part"
+    if name == nil then name = "Part" end
+
+    -- temporary local part
     local part = Instance.new("Part")
     part.Size = Vector3.new(1,1,1)
     part.Anchored = true
+    part.CanCollide = false
+    part.CanTouch = false
+    part.CanQuery = false
     part.Transparency = 1
     part.Position = pos
     part.Name = "tempartlocal"
     part.Parent = workspace
 
-    CreatePart(part.CFrame, workspace)
+    -- call your remote to create the server-side part
+    CreatePart(part.CFrame, workspace.Terrain)
 
-    -- You’ll need to figure out where the server puts the created part
-    -- For now, just return the local placeholder
-    part.Name = name
-    return part
+    -- ⚠️ this assumes the server puts a Part under Terrain
+    local createdpart = workspace.Terrain:FindFirstChild("Part")
+    if createdpart then
+        createdpart.Name = name
+    else
+        warn("No created part found under Terrain")
+    end
+
+    part:Destroy()
+    return createdpart
 end
+
 
 function MyLibrary:CreateWindow(options)
     print("Creating window with title:", options.Title)
