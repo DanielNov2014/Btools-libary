@@ -207,7 +207,7 @@ end
 function MyLibrary:Sky(id)
 	local char = game.Players.LocalPlayer.Character
 	local pos = char.HumanoidRootPart.Position
-	self:CreatePart(CFrame.new(math.floor(pos.X), math.floor(pos.Y), math.floor(pos.Z)) + Vector3.new(0,6,0), workspace)
+	self:CreatePart(CFrame.new(math.floor(pos.X), math.floor(pos.Y), math.floor(pos.Z)) + Vector3.new(0,6,0))
 
 	for _, v in ipairs(workspace:GetDescendants()) do
 		if v:IsA("BasePart") and math.floor(v.Position.X) == math.floor(pos.X) and math.floor(v.Position.Z) == math.floor(pos.Z) then
