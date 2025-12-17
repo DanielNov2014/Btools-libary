@@ -45,13 +45,13 @@ function MyLibrary:SetCollision(part, boolean)
 	_( { "SyncCollision", { { Part = part, CanCollide = boolean } } } )
 end
 
-function MyLibrary:CreatePart(cf, parent, opts)
-    parent = workspace -- always parent to workspace
+function MyLibrary:CreatePart(cf, opts)
+    local parent = workspace -- always parent to workspace
     opts = opts or {}
     local name = opts.Name or "Part"
     local color = opts.Color or Color3.fromRGB(255, 0, 0)
 
-    -- temp local marker
+    -- temporary local marker
     local temp = Instance.new("Part")
     temp.Size = Vector3.new(1,1,1)
     temp.Anchored = true
@@ -69,7 +69,7 @@ function MyLibrary:CreatePart(cf, parent, opts)
     -- hook once to grab the exact instance when it appears
     local conn
     conn = workspace.DescendantAdded:Connect(function(inst)
-        if inst:IsA("BasePart") and (inst.Position - targetPos).Magnitude < 4 then
+        if inst:IsA("BasePart") and inst.Position == targetPos then
             createdpart = inst
             if conn then conn:Disconnect() end
         end
@@ -78,12 +78,14 @@ function MyLibrary:CreatePart(cf, parent, opts)
     -- invoke server creation
     _( { "CreatePart", "Normal", temp.CFrame, workspace } )
 
-    -- fallback wait (in case event fired before we connected, or replication delay)
+    -- small delay before fallback scan
+    task.wait(0.1)
+
+    -- fallback wait loop with exact position check
     for i = 1, 30 do
         if createdpart then break end
-        -- scan only direct children (faster than GetDescendants)
         for _, v in ipairs(workspace:GetChildren()) do
-            if v:IsA("BasePart") and (v.Position - targetPos).Magnitude < 4 then
+            if v:IsA("BasePart") and v.Position == targetPos then
                 createdpart = v
                 break
             end
@@ -94,7 +96,7 @@ function MyLibrary:CreatePart(cf, parent, opts)
     if conn then conn:Disconnect() end
 
     if not createdpart then
-        warn("CreatePart: could not capture server part near position")
+        warn("CreatePart: could not capture server part at exact position")
         temp:Destroy()
         return nil
     end
