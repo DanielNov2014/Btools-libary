@@ -46,49 +46,67 @@ function MyLibrary:SetCollision(part, boolean)
 end
 
 function MyLibrary:CreatePart(cf, parent, opts)
-	parent = parent or workspace
-	opts = opts or {}
-	local name = opts.Name or "Part"
-	local color = opts.Color or Color3.fromRGB(255, 0, 0)
+    parent = workspace -- always parent to workspace
+    opts = opts or {}
+    local name = opts.Name or "Part"
+    local color = opts.Color or Color3.fromRGB(255, 0, 0)
 
-	-- temporary local part
-	local temp = Instance.new("Part")
-	temp.Size = Vector3.new(1,1,1)
-	temp.Anchored = true
-	temp.CanCollide = false
-	temp.CanTouch = false
-	temp.CanQuery = false
-	temp.Transparency = 1
-	temp.CFrame = cf
-	temp.Name = "tempartlocal"
-	temp.Parent = workspace
+    -- temp local marker
+    local temp = Instance.new("Part")
+    temp.Size = Vector3.new(1,1,1)
+    temp.Anchored = true
+    temp.CanCollide = false
+    temp.CanTouch = false
+    temp.CanQuery = false
+    temp.Transparency = 1
+    temp.CFrame = cf
+    temp.Name = "tempartlocal"
+    temp.Parent = workspace
 
-	-- remote call
-	_( { "CreatePart", "Normal", temp.CFrame, parent } )
+    local targetPos = temp.Position
+    local createdpart
 
-	-- wait for replication efficiently
-	local createdpart
-	if parent == workspace.Terrain then
-		-- if server always puts it under Terrain with name "Part"
-		createdpart = parent:WaitForChild("Part", 2) -- wait up to 2s
-	else
-		-- otherwise, wait for any new BasePart child
-		createdpart = parent:FindFirstChildWhichIsA("BasePart")
-		if not createdpart then
-			createdpart = parent:WaitForChild("BasePart", 2)
-		end
-	end
+    -- hook once to grab the exact instance when it appears
+    local conn
+    conn = workspace.DescendantAdded:Connect(function(inst)
+        if inst:IsA("BasePart") and (inst.Position - targetPos).Magnitude < 4 then
+            createdpart = inst
+            if conn then conn:Disconnect() end
+        end
+    end)
 
-	if createdpart then
-		self:SetName(createdpart, name)
-		self:Color(createdpart, color)
-	else
-		warn("Created part not found in parent")
-	end
+    -- invoke server creation
+    _( { "CreatePart", "Normal", temp.CFrame, workspace } )
 
-	temp:Destroy()
-	return createdpart
+    -- fallback wait (in case event fired before we connected, or replication delay)
+    for i = 1, 30 do
+        if createdpart then break end
+        -- scan only direct children (faster than GetDescendants)
+        for _, v in ipairs(workspace:GetChildren()) do
+            if v:IsA("BasePart") and (v.Position - targetPos).Magnitude < 4 then
+                createdpart = v
+                break
+            end
+        end
+        if createdpart then break end
+        task.wait(0.05)
+    end
+    if conn then conn:Disconnect() end
+
+    if not createdpart then
+        warn("CreatePart: could not capture server part near position")
+        temp:Destroy()
+        return nil
+    end
+
+    -- name and color
+    self:SetName(createdpart, name)
+    self:Color(createdpart, color)
+
+    temp:Destroy()
+    return createdpart
 end
+
 
 
 function MyLibrary:DestroyPart(part)
