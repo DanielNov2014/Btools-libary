@@ -16,7 +16,7 @@ end
 
 -- Setup: locate SyncAPI tool and remote
 function MyLibrary:Setup()
-	print("v 2.0 - Batch Support Active")
+	print("v 2.1 - Batch Support Active (Security Fix)")
 	local player = game.Players.LocalPlayer
 
 	for _, v in ipairs(player:GetDescendants()) do
@@ -211,12 +211,16 @@ function MyLibrary:SetName(part, newName)
 	if type(part) == "table" then _( { "SetName", part, newName } ) else _( { "SetName", { part }, newName } ) end
 end
 
-function MyLibrary:Weld(part1, part2, lead)
-	_( { "CreateWelds", { part1, part2 }, lead } )
+function MyLibrary:SetLocked(partData, boolean)
+	if type(partData) == "table" then 
+		_( { "SetLocked", partData, boolean } ) 
+	else 
+		_( { "SetLocked", { partData }, boolean } ) 
+	end
 end
 
-function MyLibrary:SetLocked(part, boolean)
-	_( { "SetLocked", { part }, boolean } )
+function MyLibrary:Weld(part1, part2, lead)
+	_( { "CreateWelds", { part1, part2 }, lead } )
 end
 
 -- === Letter decal map ===
